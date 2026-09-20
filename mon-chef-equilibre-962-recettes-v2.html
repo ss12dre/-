@@ -1,0 +1,112 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mon Chef Équilibré</title><style>
+body{margin:0;background:#fffaf2;color:#24332b;font-family:Arial,sans-serif}
+.wrap{max-width:720px;margin:auto;padding:20px}
+header{background:#315c45;color:#fff;text-align:center;padding:25px 15px}
+header h1{margin:0}header p{margin:8px 0 0}
+.card{background:#fff;margin-top:20px;padding:20px;border-radius:18px;box-shadow:0 4px 16px #0002}
+.types{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.type{border:2px solid #dbe9db;background:#fff;border-radius:12px;padding:14px;font-size:16px;text-align:left;cursor:pointer}
+.type.active{border-color:#315c45;background:#e8f3e8;color:#315c45;font-weight:bold}
+.mainButton{display:block;width:100%;margin-top:18px;background:#e98548;color:white;border:0;border-radius:12px;padding:16px;font-weight:bold;font-size:17px;cursor:pointer}
+.again{background:#315c45;color:white;border:0;border-radius:12px;padding:13px 16px;font-weight:bold;font-size:15px;cursor:pointer}
+.result{display:none}.result.show{display:block}
+.food{font-size:65px;text-align:center;background:#edf6ec;border-radius:14px;padding:12px}
+.tag{color:#e98548;font-size:12px;font-weight:bold;text-transform:uppercase}
+.meta{background:#f3f8f2;border-radius:10px;padding:10px;margin:14px 0;line-height:1.8}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+li{margin:7px 0;line-height:1.4}
+.message{min-height:20px;text-align:center;color:#a22;font-weight:bold;margin:10px 0}
+.counter{text-align:center;color:#5c6d61;font-size:13px;margin-top:6px}
+@media(max-width:540px){.types,.cols{grid-template-columns:1fr}}
+</style></head><body>
+<header><h1>Mon Chef Équilibré 🍽️</h1><p>Choisis un type de repas parmi plus de 900 recettes équilibrées.</p></header>
+<main class="wrap">
+<section class="card">
+<h2>Tu veux manger quoi ?</h2>
+<div class="types">
+<button class="type" data-type="m">🥩 Viande</button>
+<button class="type" data-type="c">🍗 Poulet</button>
+<button class="type" data-type="f">🐟 Poisson</button>
+<button class="type" data-type="v">🥬 Végétarien</button>
+<button class="type" data-type="e">🌱 Vegan</button>
+<button class="type" data-type="snack">🥪 Casse-croûte</button>
+<button class="type" data-type="all">🎲 Surprends-moi</button>
+</div>
+<button id="suggest" class="mainButton">Propose-moi une recette 🍽️</button>
+<div id="message" class="message"></div>
+<div id="counter" class="counter"></div>
+</section>
+<section id="result" class="card result"><div id="content"></div><button id="again" class="again">Une autre recette</button></section>
+</main>
+<script>
+var DATA = {"lookup":{"starches":["riz complet","riz basmati","quinoa","pâtes complètes","patate douce rôtie","boulgour","pommes de terre vapeur","couscous complet","polenta crémeuse","orge perlé","riz sauvage","semoule complète"],"veggies":["brocolis vapeur","poêlée de poivrons","courgettes grillées","carottes rôties","épinards sautés","salade croquante","haricots verts","chou-fleur rôti","aubergines grillées","tomates cerises","champignons poêlés","chou kale sauté","fenouil rôti","petits pois"],"sauces":["sauce soja-gingembre","sauce yaourt-citron","sauce tomate aux herbes","sauce coco-curry","vinaigrette moutarde","sauce ail-persil","sauce paprika fumé","pesto léger","sauce miel-moutarde","houmous citronné","sauce tahini","sauce harissa légère"]},"recipes":__RECIPES__};
+var starches = DATA.lookup.starches, veggies = DATA.lookup.veggies, sauces = DATA.lookup.sauces;
+var raw = DATA.recipes;
+
+var recipes = raw.map(function(r, idx){
+  if(r[0] === 'snack'){
+    return {id: 'snk'+idx, type:'snack', e:r[1], name:r[2], time:r[3], kcal:r[4], p:r[5], ing:r[6], steps:r[7]};
+  } else {
+    var typeMap = {m:'meat', c:'chicken', f:'fish', v:'vegetarian', e:'vegan'};
+    var type = typeMap[r[0]];
+    var prot = r[1], starch = starches[r[2]], veg = veggies[r[3]], sauce = sauces[r[4]];
+    var time = r[5], kcal = r[6], p = r[7], emoji = r[8];
+    var name = prot + ', ' + starch + ' et ' + veg;
+    var ing = ['150 g de '+prot, '80 g de '+starch, veg, sauce];
+    var steps = [
+      'Préparer '+starch+' selon la cuisson classique.',
+      'Cuisiner '+prot+' avec '+sauce+'.',
+      'Ajouter '+veg+' et faire revenir quelques minutes.',
+      'Assembler le tout et servir chaud.'
+    ];
+    return {id: idx, type:type, e:emoji, name:name, time:time, kcal:kcal, p:p, ing:ing, steps:steps};
+  }
+});
+
+var selected='all', last=-1, history=[];
+var buttons=document.querySelectorAll('.type');
+var message=document.getElementById('message');
+var result=document.getElementById('result');
+var content=document.getElementById('content');
+var counter=document.getElementById('counter');
+
+function choose(type){
+  selected=type;
+  for(var i=0;i<buttons.length;i++){buttons[i].classList.toggle('active',buttons[i].getAttribute('data-type')===type)}
+  message.textContent='';
+  updateCounter();
+}
+function currentList(){
+  var list=[];
+  for(var i=0;i<recipes.length;i++){
+    if(selected==='all' || recipes[i].type===selected){list.push(recipes[i])}
+  }
+  return list;
+}
+function updateCounter(){
+  var n = currentList().length;
+  counter.textContent = n + ' recettes disponibles dans cette catégorie';
+}
+function showRecipe(){
+  var list=currentList();
+  if(list.length===0){message.textContent='Aucune recette trouvée. Choisis une autre catégorie.';return}
+  var possible=[];
+  for(var j=0;j<list.length;j++){
+    if(list.length<=history.length || history.indexOf(list[j].id)===-1){possible.push(list[j])}
+  }
+  if(possible.length===0){history=[];possible=list}
+  var r=possible[Math.floor(Math.random()*possible.length)];
+  history.push(r.id);
+  if(history.length>50){history.shift()}
+  content.innerHTML='<div class="food">'+r.e+'</div><p class="tag">Recette équilibrée</p><h2>'+r.name+'</h2><div class="meta">⏱ '+r.time+' min<br>🔥 '+r.kcal+' kcal<br>💪 '+r.p+' g de protéines</div><div class="cols"><div><h3>Ingrédients</h3><ul>'+r.ing.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ul></div><div><h3>Préparation</h3><ol>'+r.steps.map(function(x){return '<li>'+x+'</li>'}).join('')+'</ol></div></div>';
+  result.classList.add('show');
+  result.scrollIntoView({behavior:'smooth',block:'start'});
+}
+for(var i=0;i<buttons.length;i++){
+  buttons[i].onclick=function(){choose(this.getAttribute('data-type'))}
+}
+document.getElementById('suggest').onclick=showRecipe;
+document.getElementById('again').onclick=showRecipe;
+choose('all');
+</script>
+</body></html>
